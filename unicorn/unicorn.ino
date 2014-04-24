@@ -1,6 +1,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #define PIN 6
+#define Button 9
 //#define waitTime
 
 // Parameter 1 = number of pixels in strip
@@ -15,6 +16,8 @@ float waitTime = 50.0;
 int var = 0;
 
 void setup() {
+  pinMode(Button, INPUT);
+  digitalWrite(Button, HIGH);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 }
@@ -37,6 +40,9 @@ void loop() {
   //colorWipe(strip.Color(0, 0, 255), 50); // Blue
   //rainbow(20);
   rainbowCycle(20);
+  if (digitalRead(Button) == 0) {
+    float waitTime = 50.0;
+  }
 }
 
 // Fill the dots one after the other with a color
