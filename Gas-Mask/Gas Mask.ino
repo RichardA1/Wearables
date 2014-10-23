@@ -4,10 +4,10 @@
 // inherently limited by Trinket RAM and processing power; this is
 // written for five 15-pixel strands, which are paired up per pin
 // for ten 15-pixel strips total.
-
+ 
 #include <Adafruit_NeoPixel.h>
 #include <avr/power.h>
-
+ 
 uint8_t gamma[] PROGMEM = { // Gamma correction table for LED brightness
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
@@ -25,14 +25,14 @@ uint8_t gamma[] PROGMEM = { // Gamma correction table for LED brightness
   144,146,148,150,152,154,156,158,160,162,164,167,169,171,173,175,
   177,180,182,184,186,189,191,193,196,198,200,203,205,208,210,213,
   215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255 };
-
-#define STRIPLEN 15 // Length of LED strips
+ 
+#define STRIPLEN 16 // Length of LED strips
 #define MAXDROPS  5 // Max concurrent 'raindrops'
-#define N_STRIPS  5 // Connect strips to pins 0 to (N_STRIPS-1)
-#define mode  1 // Reads the Mode selection button
-
+#define N_STRIPS  2 // Connect strips to pins 0 to (N_STRIPS-1)
+#define mode  2 // Reads the Mode selection button
+ 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(STRIPLEN, 0);
-
+ 
 // Everything's declared volatile because state changes inside
 // an interrupt routine.
 volatile struct {
@@ -46,9 +46,9 @@ volatile uint8_t
   prevStrip = 255; // Last selected strip
 volatile uint16_t
   countdown = 0;   // Time to next raindrop
-
+ 
 void setup() {
-
+ 
   // Set up Timer/Counter1 for ~30 Hz interrupt
 #if F_CPU == 16000000L
   clock_prescale_set(clock_div_1);
@@ -56,30 +56,30 @@ void setup() {
 #else
   TCCR1  = _BV(PWM1A) |_BV(CS13) | _BV(CS11) | _BV(CS10); // 1:1024 prescale
 #endif
-
+ 
   // Turn strips off ASAP (must follow clock_prescale_set)
   strip.begin();
   for(uint8_t s=0; s<N_STRIPS; s++) {
     strip.setPin(s);
     strip.show();
   }
-
+ 
   // Finish timer/counter setup
   OCR1C  = 255;        // ~30 Hz
   GTCCR  = 0;          // No PWM out
   TIMSK |= _BV(TOIE1); // Enable overflow interrupt
 }
-
+ 
 void loop() { } // Not used -- everything's in interrupt below
-
+ 
 // A timer interrupt is used so that everything runs at regular
 // intervals, regardless of current amount of motion.
 ISR(TIMER1_OVF_vect) {
-
+ 
   uint16_t mag[STRIPLEN];
   uint8_t  s, d, p, r, g, b;
   int      mx1, m, level;
-
+ 
   if(countdown == 0) {         // Time to launch new drop?
     if(nDrops < MAXDROPS-1) {  // Is there space for one in the list?
       do {
@@ -93,11 +93,11 @@ ISR(TIMER1_OVF_vect) {
       countdown = 9 + random(28); // Time to launch next one
     }
   } else countdown--;
-
-
+ 
+ 
   for(s=0; s<N_STRIPS; s++) { // For each strip...
     memset(mag, 0, sizeof(mag)); // Clear magnitude table
-
+ 
     // Render active drops for this strip into magnitude table
     for(d=0; d<nDrops; d++) {
       if(drop[d].strip == s) {
@@ -113,9 +113,8 @@ ISR(TIMER1_OVF_vect) {
         }
       }
     }
-
-    // Remap magnitude table to RGB for st
-    rand
+ 
+    // Remap magnitude table to RGB for strand
     for(p=0; p<STRIPLEN; p++) {      // For each pixel in strip
       level = mag[p];                // Pixel magnitude (brightness)
       if(level < 255) {              // 0-254 = black to green-1
@@ -132,25 +131,28 @@ ISR(TIMER1_OVF_vect) {
         r = g = b = 255;
       }
       
+      //strip.setPixelColor(p, b, g, r);  // Blue-Green
+      //strip.setPixelColor(p, g, 0, g);  // Purple
+      //strip.setPixelColor(p, b, 20, 0);  // Odd one
+      
       switch (mode) {
         case 1:
-          strip.setPixelColor(p, r, g, b); //Green
+          strip.setPixelColor(p, r, g, (0));  // Green
           break;
         case 2:
-          strip.setPixelColor(p, b, r, g); //Red
-          break;
+         strip.setPixelColor(p, g, (b/4), 0); //Red 
+         break;
         case 3:
-          strip.setPixelColor(p, g, b, r); //Blue
+          strip.setPixelColor(p, b, r, g);  // Blue
           break;
-        default:
-          // if nothing else matches, do the default
       }
+    
     }
-
+ 
     strip.setPin(s); // Select output pin
     strip.show();    // Strips don't need to refresh in sync
   }
-
+ 
   // Move 'active' drops
   for(d=0; d<nDrops; d++) {
     drop[d].pos += drop[d].speed;
