@@ -1,8 +1,7 @@
 #include <Adafruit_NeoPixel.h>
 
-#define PIN 6
-#define Button 9
-//#define waitTime
+#define PIN 5 //alt pin 6
+#define Button 4 //alt pin 9
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = pin number (most are valid)
@@ -14,35 +13,59 @@
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
 float waitTime = 50.0;
 int var = 0;
+int flash = 0;
+int Twinkle = 1;
+int buttonState = 0;         // variable for reading the pushbutton status
+uint8_t Bright = 105;
+uint8_t LightB = 0;
+uint8_t LEDr;
+uint8_t LEDg;
+uint8_t LEDb;
 
 void setup() {
-  pinMode(Button, INPUT);
+  //LightUp = map(LightUp, LightB, Bright, 1, 255);
+  //LightDown = map(LightDown, LightB, 255, LightB, Bright);
+   Serial.begin(9600);
+   // initialize the pushbutton pin as an input:
+    pinMode(Button, INPUT);
   digitalWrite(Button, HIGH);
   strip.begin();
+  strip.setBrightness(Bright); //adjust brightness here
   strip.show(); // Initialize all pixels to 'off'
 }
 
 void loop() {
   // Some example procedures showing how to display to the pixels:
-  
-  while(waitTime > 2){
+  if (flash == 0 ) {
+    waitTime = 50;
+    var = 0;
+  while(waitTime > 1){
     colorWipe(strip.Color(255, 255, 255), waitTime); // Red
     colorWipe(strip.Color(0, 0, 0), waitTime); // Red
-    waitTime = (float)waitTime - ((float)waitTime / 5);
+    waitTime = (float)waitTime - ((float)waitTime / 4);
   }
-  waitTime = 1.0;
-  while(var < 4){
-    colorWipe(strip.Color(255, 255, 255), waitTime); // Red
-    colorWipe(strip.Color(0, 0, 0), waitTime); // Red
+  waitTime = 100;
+  while(var < 40){
+    flashWipe(strip.Color(255, 255, 255), waitTime); // Red
+    flashWipe(strip.Color(0, 0, 0), waitTime); // Red
+    waitTime = (float)waitTime - ((float)waitTime / 30);
     var++;
   }
-  //colorWipe(strip.Color(0, 255, 0), 50); // Green
-  //colorWipe(strip.Color(0, 0, 255), 50); // Blue
-  //rainbow(20);
   rainbowCycle(20);
-  if (digitalRead(Button) == 0) {
-    float waitTime = 50.0;
+
+    flash = 1;
+    //flashWipe(strip.Color(234, 12, 153), waitTime); // Red
   }
+    // read the state of the pushbutton value:
+  buttonState = digitalRead(Button);
+
+  // check if the pushbutton is pressed.
+  // if it is, the buttonState is HIGH:
+  if (buttonState == LOW) {     
+    // turn LED on:    
+    flash = 0;
+  }
+  FadeLight(5);
 }
 
 // Fill the dots one after the other with a color
@@ -54,23 +77,19 @@ void colorWipe(uint32_t c, uint8_t wait) {
   }
 }
 
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256; j++) {
-    for(i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel((i+j) & 255));
-    }
-    strip.show();
-    delay(wait);
+void flashWipe(uint32_t c, uint8_t wait) {
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+     strip.setPixelColor(i, c);
   }
+     strip.show();
+     delay(waitTime);
 }
 
 // Slightly different, this makes the rainbow equally distributed throughout
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+  for(j=0; j<256*4; j++) { // 5 cycles of all colors on wheel
     for(i=0; i< strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
@@ -93,3 +112,39 @@ uint32_t Wheel(byte WheelPos) {
   }
 }
 
+void FadeLight(uint8_t wait) {
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+if (random(3000) < Twinkle) {
+  if (Twinkle < 30) {
+    Twinkle++;
+  }
+      LEDr = 255;
+      LEDg = 255;
+      LEDb = 255;
+} else {
+      LEDr =(strip.getPixelColor(i) >> 16);
+      LEDg =(strip.getPixelColor(i) >> 8);
+      LEDb =(strip.getPixelColor(i));
+      LEDr = map(LEDr, 0, Bright, 0, 255);
+      LEDg = map(LEDg, 0, Bright, 0, 255);
+      LEDb = map(LEDb, 0, Bright, 0, 255);
+        if(LEDr > LightB) {
+          LEDr = LEDr-((LEDr - LightB)/10);
+        }else{
+          LEDr = LightB;
+        }
+        if(LEDg > LightB) {
+          LEDg = LEDg-((LEDg - LightB)/10);
+        }else{
+          LEDg = LightB;
+        }
+        if(LEDb > LightB) {
+          LEDb = LEDb-((LEDb - LightB)/10);
+        }else{
+          LEDb = LightB;
+        }
+}
+     strip.setPixelColor(i, LEDr, LEDg, LEDb);
+     strip.show();
+       }
+}
